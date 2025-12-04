@@ -3,20 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>产品详情 - 极速性能</title>
+    <title>核心算法详情 - 挑战杯项目</title>
     <style>
-        body { font-family: sans-serif; padding: 2rem; line-height: 1.6; max-width: 800px; margin: 0 auto; }
-        .back-btn { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #2563eb; }
-        h1 { color: #1e293b; }
-        img { max-width: 100%; border-radius: 8px; margin: 20px 0; }
+        /* 复用主页的变量 */
+        :root {
+            --primary-color: #2563eb;
+            --dark-color: #0f172a;
+            --light-color: #f8fafc;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.8;
+            color: #334155;
+            background-color: var(--light-color);
+            margin: 0; padding: 0;
+        }
+
+        /* 顶部导航 */
+        header {
+            background: white;
+            padding: 1rem 5%;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .back-link {
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        /* 内容容器 */
+        .main-container {
+            max-width: 900px;
+            margin: 3rem auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 标题区 */
+        .article-header { border-bottom: 1px solid var(--border-color); padding-bottom: 2rem; margin-bottom: 2rem; }
+        h1 { margin: 0 0 1rem 0; color: var(--dark-color); font-size: 2.2rem; }
+        .tags { display: flex; gap: 0.5rem; }
+        .tag { background: #eff6ff; color: var(--primary-color); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; }
+
+        /* 正文区 */
+        h2 { color: var(--dark-color); border-left: 4px solid var(--primary-color); padding-left: 1rem; margin-top: 2.5rem; }
+        p { margin-bottom: 1.5rem; text-align: justify; }
+        
+        /* 模拟学术图表 */
+        .chart-placeholder {
+            width: 100%;
+            height: 300px;
+            background: #f1f5f9;
+            border: 1px dashed #94a3b8;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #64748b;
+            margin: 2rem 0;
+        }
+        .chart-caption { font-size: 0.9rem; color: #64748b; text-align: center; margin-top: -1.5rem; margin-bottom: 2rem; }
+
+        /* 数据高亮框 */
+        .data-highlight {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .data-box { background: var(--dark-color); color: white; padding: 1.5rem; border-radius: 8px; text-align: center; }
+        .data-box .num { display: block; font-size: 2rem; font-weight: bold; color: #60a5fa; }
+        .data-box .label { font-size: 0.9rem; opacity: 0.8; }
+
+        @media (max-width: 768px) {
+            .main-container { padding: 1.5rem; margin: 1rem; }
+            .data-highlight { grid-template-columns: 1fr; }
+            h1 { font-size: 1.8rem; }
+        }
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-btn">← 返回首页</a>
 
-    <h1>极速性能详情</h1>
-    <img src="https://picsum.photos/800/400" alt="详细图片">
-    <p>这里是关于极速性能的详细介绍文案。采用了最新的 5nm 制程芯片，由于...</p>
-    <p>详细参数：...</p>
+    <header>
+        <a href="index.html" class="back-link">← 返回项目首页</a>
+    </header>
+
+    <div class="main-container">
+        <div class="article-header">
+            <h1>基于改进 Transformer 的高精度识别算法</h1>
+            <div class="tags">
+                <span class="tag">深度学习</span>
+                <span class="tag">核心专利</span>
+                <span class="tag">挑战杯金奖项目</span>
+            </div>
+        </div>
+
+        <p><strong>摘要：</strong> 针对传统卷积神经网络在复杂背景下特征提取能力不足的问题，本项目提出了一种融合注意力机制的新型网络结构。实验表明，该算法在标准数据集上的表现显著优于 Baseline。</p>
+
+        <h2>1. 核心创新点</h2>
+        <p>我们重新设计了骨干网络的特征融合模块，引入了多尺度空洞卷积（Atrous Convolution），使得模型在不显著增加参数量的前提下，感受野扩大了 2 倍。</p>
+
+        <div class="data-highlight">
+            <div class="data-box">
+                <span class="num">98.5%</span>
+                <span class="label">识别准确率</span>
+            </div>
+            <div class="data-box">
+                <span class="num">25ms</span>
+                <span class="label">单帧推理耗时</span>
+            </div>
+            <div class="data-box">
+                <span class="num">1/3</span>
+                <span class="label">模型体积缩减</span>
+            </div>
+        </div>
+
+        <h2>2. 实验数据分析</h2>
+        <p>为了验证算法的鲁棒性，我们在包含 10 万张图片的行业数据集上进行了消融实验。下图展示了我们的模型（Ours）在不同光照条件下的 Loss 收敛曲线。</p>
+
+        <div class="chart-placeholder">
+            <span style="font-size: 3rem;">📊</span>
+            <span>[此处建议插入 Loss 曲线对比图]</span>
+        </div>
+        <div class="chart-caption">图 1: 改进算法与 ResNet50 的训练收敛速度对比</div>
+
+        <h2>3. 落地应用与展望</h2>
+        <p>目前，该算法模块已成功集成到“智能分拣机器人”原型机中。下一步，团队计划引入轻量化蒸馏技术，进一步将模型部署到树莓派等边缘计算设备上。</p>
+
+    </div>
+
 </body>
 </html>
