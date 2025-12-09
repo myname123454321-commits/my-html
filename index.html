@@ -14,7 +14,7 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', sans-serif; }
         
-        /* 标题与歌词风格 */
+        /* 标题 */
         #title-overlay {
             position: absolute; width: 100%; top: 15%; text-align: center; pointer-events: none; z-index: 5;
             transition: opacity 0.5s;
@@ -33,17 +33,18 @@
             color: #888; font-size: 1.2rem; letter-spacing: 5px; margin-top: 10px; text-transform: uppercase;
         }
 
-        /* 摄像头小窗 */
+        /* 摄像头小窗 - 修正版 */
         #camera-container {
             position: absolute; top: 20px; left: 20px; width: 240px; height: 180px; z-index: 20;
             border-radius: 4px; overflow: hidden; border: 1px solid rgba(100, 100, 100, 0.5);
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.8); transform: scaleX(-1);
             background: #000;
         }
-        .input_video { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; filter: grayscale(100%); } /* 黑白滤镜增加电影感 */
+        /* 移除 grayscale 滤镜，调高 opacity */
+        .input_video { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0.9; } 
         .output_canvas { position: absolute; width: 100%; height: 100%; }
 
-        /* 启动遮罩层 (用于解决浏览器自动播放限制) */
+        /* 启动遮罩 */
         #start-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 100;
@@ -70,7 +71,7 @@
     </div>
 
     <audio id="bgm" loop>
-        <source src="https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg" type="audio/ogg">
+        <source src="./M800004WDS6p3EeOIq.mp3" type="audio/mp3">
     </audio>
 
     <div id="title-overlay">
@@ -92,16 +93,15 @@
 
 <script>
     // ================= 1. 核心配置 =================
-    const RAIN_COUNT = 15000; // 雨滴数量，越多越真实
-    const RAIN_SPEED_BASE = 1.2; // 基础下落速度
+    const RAIN_COUNT = 15000; 
+    const RAIN_SPEED_BASE = 1.2; 
     
     // ================= 2. 场景初始化 =================
     const scene = new THREE.Scene();
-    // 增加黑色雾气，模拟深夜视线受阻的感觉
     scene.fog = new THREE.FogExp2(0x000000, 0.015); 
     
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 20); // 视角平视
+    camera.position.set(0, 0, 20); 
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -109,22 +109,21 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // ================= 3. 真实感雨滴系统 =================
-    // 技巧：使用 Canvas 动态生成一个“长条形”的渐变纹理，而不是简单的圆点
+    // ================= 3. 真实感雨滴系统 (修正版) =================
     function createRainTexture() {
         const canvas = document.createElement('canvas');
         canvas.width = 32;
-        canvas.height = 256; // 高度很大，模拟雨丝
+        canvas.height = 256; 
         const ctx = canvas.getContext('2d');
 
-        // 渐变：头部透明 -> 尾部白色 (模拟雨滴划过的痕迹)
         const gradient = ctx.createLinearGradient(0, 0, 0, 256);
         gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        gradient.addColorStop(0.5, 'rgba(150, 180, 255, 0.2)'); // 淡淡的蓝
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0.8)'); // 亮白尾部
+        gradient.addColorStop(0.5, 'rgba(180, 200, 255, 0.1)'); // 调淡颜色
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0.6)'); 
 
         ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 32, 256);
+        // 把线条画得更细一点，之前的 32px 宽太粗了
+        ctx.fillRect(15, 0, 2, 256); 
 
         const texture = new THREE.Texture(canvas);
         texture.needsUpdate = true;
@@ -133,60 +132,61 @@
 
     const rainGeometry = new THREE.BufferGeometry();
     const rainPositions = new Float32Array(RAIN_COUNT * 3);
-    const rainVelocities = new Float32Array(RAIN_COUNT); // 独立速度
+    const rainVelocities = new Float32Array(RAIN_COUNT); 
     
     for (let i = 0; i < RAIN_COUNT; i++) {
         const i3 = i * 3;
-        // 宽广的分布范围
         rainPositions[i3] = (Math.random() - 0.5) * 200;
         rainPositions[i3+1] = (Math.random() - 0.5) * 100;
         rainPositions[i3+2] = (Math.random() - 0.5) * 100;
         
-        // 随机速度：有的快有的慢，增加层次感
         rainVelocities[i] = 0.8 + Math.random() * 0.4;
     }
     
     rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
 
     const rainMaterial = new THREE.PointsMaterial({
-        color: 0xaaaaaa, // 灰白色雨滴
-        size: 0.8,       // 粒子基础大小
-        map: createRainTexture(), // 使用长条纹理
+        color: 0xaaaaaa, 
+        size: 0.3,       // [修改] 尺寸缩小到 0.3 (之前是 0.8)
+        map: createRainTexture(), 
         transparent: true,
         opacity: 0.7,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        sizeAttenuation: true // 远处的雨滴变小
+        sizeAttenuation: true 
     });
 
     const rainSystem = new THREE.Points(rainGeometry, rainMaterial);
     scene.add(rainSystem);
 
-    // 灯光：模拟街灯或闪电的微光
     const ambientLight = new THREE.AmbientLight(0x222222);
     scene.add(ambientLight);
     const dirLight = new THREE.DirectionalLight(0xaaccff, 0.5);
     dirLight.position.set(0, 50, 0);
     scene.add(dirLight);
 
-    // ================= 4. 音频与交互控制 =================
+    // ================= 4. 音频与交互 =================
     const bgm = document.getElementById('bgm');
     let isExperienceStarted = false;
 
-    // 点击启动页开始
     document.getElementById('start-screen').addEventListener('click', () => {
         document.getElementById('start-screen').style.opacity = '0';
         setTimeout(() => document.getElementById('start-screen').style.display = 'none', 500);
         
         isExperienceStarted = true;
-        bgm.play().catch(e => console.log("Audio play failed:", e));
+        // 尝试播放音乐
+        bgm.play().then(() => {
+            console.log("Music started");
+        }).catch(e => {
+            console.error("Music play failed:", e);
+            alert("音乐播放失败，请检查文件名是否正确");
+        });
         
-        // 启动摄像头
         cameraUtils.start();
     });
 
     // ================= 5. 手势识别 =================
-    let handState = 'fist'; // 'fist' | 'open'
+    let handState = 'fist'; 
     
     const videoElement = document.getElementsByClassName('input_video')[0];
     const canvasElement = document.getElementsByClassName('output_canvas')[0];
@@ -200,20 +200,18 @@
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0];
             
-            // 极简骨骼绘制 (黑白风)
-            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(255,255,255,0.3)', lineWidth: 1});
+            // 骨骼颜色
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(0, 200, 255, 0.5)', lineWidth: 1});
             drawLandmarks(canvasCtx, landmarks, {color: 'rgba(255,255,255,0.8)', lineWidth: 1, radius: 2});
 
-            // 握拳检测
             const wrist = landmarks[0];
             const tips = [8, 12, 16, 20];
             let dist = 0;
             tips.forEach(i => dist += Math.hypot(landmarks[i].x - wrist.x, landmarks[i].y - wrist.y));
-            // 距离阈值判断
             handState = (dist / 4) > 0.35 ? 'open' : 'fist';
 
         } else {
-            handState = 'fist'; // 默认下雨
+            handState = 'fist'; 
         }
     }
 
@@ -225,7 +223,6 @@
         onFrame: async () => { await hands.send({image: videoElement}); },
         width: 320, height: 240
     });
-    // cameraUtils.start() 移到了点击事件里
 
     // ================= 6. 动画主循环 =================
     let currentSpeed = RAIN_SPEED_BASE;
@@ -240,38 +237,30 @@
             return;
         }
 
-        // --- 音乐与速度控制逻辑 ---
         let targetSpeed = RAIN_SPEED_BASE;
 
         if (handState === 'open') {
-            // 张手：停雨 & 停音乐
-            targetSpeed = 0;
+            targetSpeed = 0; // 停雨
             if (!bgm.paused) bgm.pause();
         } else {
-            // 握拳：下雨 & 放音乐
-            targetSpeed = RAIN_SPEED_BASE;
+            targetSpeed = RAIN_SPEED_BASE; // 下雨
             if (bgm.paused) bgm.play();
         }
 
-        // 速度平滑过渡 (Lerp)
         currentSpeed += (targetSpeed - currentSpeed) * 0.1;
 
-        // --- 粒子物理更新 ---
         const positions = rainSystem.geometry.attributes.position.array;
 
         for (let i = 0; i < RAIN_COUNT; i++) {
             const i3 = i * 3;
             
-            // 下落公式：Y -= 速度 * 个体差异
             positions[i3 + 1] -= currentSpeed * rainVelocities[i];
 
-            // 循环下落：掉出底界，回到顶界
             if (positions[i3 + 1] < -50) {
                 positions[i3 + 1] = 50;
             }
 
-            // 悬停时的微动 (Suspension Effect)
-            // 当速度接近0时，给雨滴加一点点上下浮动，像魔法控制一样
+            // 悬停微颤
             if (currentSpeed < 0.1) {
                 positions[i3 + 1] += Math.sin(time * 2 + i) * 0.005; 
             }
@@ -279,7 +268,7 @@
         
         rainSystem.geometry.attributes.position.needsUpdate = true;
 
-        // 相机微动 (Handheld Camera Feel)
+        // 相机微动
         camera.position.y += Math.sin(time * 0.5) * 0.005;
         camera.rotation.z = Math.sin(time * 0.2) * 0.002;
 
