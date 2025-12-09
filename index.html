@@ -27,20 +27,36 @@
             z-index: 1;
         }
 
-        /* --- 修改处：摄像头画面样式 --- */
-        .input_video {
-            display: block; /* 改为显示 */
+        /* --- 修改处：摄像头画面容器 --- */
+        /* 我们用一个容器来包裹 视频 和 绘制骨骼的画布，方便统一管理 */
+        #camera-container {
             position: absolute;
-            top: 15px;
-            left: 15px;
-            width: 160px;  /* 画面宽度 */
-            height: 120px; /* 画面高度 */
-            z-index: 20;   /* 确保在最上层 */
-            border-radius: 8px; /* 圆角 */
-            border: 2px solid rgba(255, 255, 255, 0.3); /* 半透明边框 */
-            opacity: 0.8;  /* 微微透明，不遮挡太多背景 */
-            transform: scaleX(-1); /* 镜像翻转，符合照镜子习惯 */
-            object-fit: cover; /* 保持比例填充 */
+            top: 20px;
+            left: 20px;
+            width: 320px;  /* 宽度加大到 320px */
+            height: 240px; /* 高度加大到 240px */
+            z-index: 20;
+            border-radius: 12px;
+            overflow: hidden; /* 圆角裁切 */
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); /* 加点阴影更立体 */
+            transform: scaleX(-1); /* 整体镜像翻转 */
+        }
+
+        /* 视频画面 */
+        .input_video {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+
+        /* 骨骼绘制层 (透明叠加在视频上) */
+        .output_canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            /* 只要这一层覆盖在 video 上即可 */
         }
 
         /* UI 面板样式 */
@@ -50,7 +66,7 @@
             right: 20px;
             z-index: 10;
             background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px); /* 毛玻璃效果 */
+            backdrop-filter: blur(10px);
             padding: 20px;
             border-radius: 12px;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -77,7 +93,6 @@
         .shape-btn:hover { background: rgba(255, 255, 255, 0.2); }
         .shape-btn.active { background: #2563eb; border-color: #2563eb; }
 
-        /* 颜色选择器和全屏按钮 */
         input[type="color"] {
             width: 100%; height: 35px; border: none; border-radius: 6px; cursor: pointer;
         }
@@ -88,7 +103,6 @@
         }
         #fullscreen-btn:hover { background: rgba(255, 255, 255, 0.2); }
 
-        /* 加载提示 */
         #loading {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             color: white; z-index: 20; font-size: 1.2rem; pointer-events: none;
@@ -99,7 +113,10 @@
 <body>
     <div id="loading">正在启动摄像头和 AI 模型...<br>请在弹窗中点击“允许”</div>
     
-    <video class="input_video"></video>
+    <div id="camera-container">
+        <video class="input_video"></video>
+        <canvas class="output_canvas"></canvas>
+    </div>
     
     <div id="canvas-container"></div>
 
@@ -115,7 +132,7 @@
             <input type="color" id="color-picker" value="#ff4444">
         </div>
         <button id="fullscreen-btn">📺 切换全屏</button>
-        <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">提示：伸出手掌对准左上角画面。<br>握拳=聚合，张开=扩散。</p>
+        <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">提示：手部骨骼已可视化。<br>握拳=聚合，张开=扩散。</p>
     </div>
 
 
@@ -193,15 +210,34 @@
     scene.add(particleSystem);
 
 
-    // ================= MediaPipe 手势识别 =================
+    // ================= MediaPipe 手势识别与绘制 =================
     let handOpenness = 0; 
     const videoElement = document.getElementsByClassName('input_video')[0];
+    const canvasElement = document.getElementsByClassName('output_canvas')[0];
+    const canvasCtx = canvasElement.getContext('2d');
 
     function onResults(results) {
         document.getElementById('loading').style.display = 'none';
 
+        // 1. 准备画布
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+        // 2. 如果检测到手
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0];
+            
+            // --- 核心修改：绘制骨骼 ---
+            // 绘制连接线 (绿色)
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                            {color: '#00FF00', lineWidth: 4});
+            // 绘制关键点 (红色)
+            drawLandmarks(canvasCtx, landmarks,
+                            {color: '#FF0000', lineWidth: 2, radius: 4});
+
+            // --- 计算开合度逻辑 ---
             const wrist = landmarks[0];
             const fingertips = [8, 12, 16, 20];
             let totalDistance = 0;
@@ -218,6 +254,7 @@
         } else {
              handOpenness = (handOpenness * 0.95) + (1 * 0.05);
         }
+        canvasCtx.restore();
     }
 
     const hands = new Hands({locateFile: (file) => {
