@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>粒子圣诞树 - 纯净版</title>
+    <title>粒子圣诞树 - 最终修复版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
@@ -16,7 +16,7 @@
         
         #title-overlay {
             position: absolute; width: 100%; top: 15%; text-align: center; pointer-events: none; z-index: 5;
-            transition: opacity 1s;
+            transition: opacity 0.5s;
         }
         h1 {
             font-family: 'Ma Shan Zheng', cursive; 
@@ -46,6 +46,11 @@
 
         #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
         #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #ffd700; font-size: 1.5rem; z-index: 100; text-align: center; }
+        
+        /* 调试信息，如果还看不到树可以截图这个给我看 */
+        #debug-info {
+            position: absolute; bottom: 10px; right: 10px; color: #555; font-size: 10px; z-index: 100; pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -61,23 +66,25 @@
     </div>
 
     <div id="guide-panel">
-        <span class="key">✊ 握拳</span> 凝聚成树 &nbsp;&nbsp;&nbsp;&nbsp; 
-        <span class="key">✋ 张开</span> 漫天星光
+        <span class="key">✊ 握拳</span> 圣诞树 &nbsp;&nbsp;&nbsp;&nbsp; 
+        <span class="key">✋ 张开</span> 满天星
     </div>
+    
+    <div id="debug-info">Render Mode: CanvasTexture | Particles: 12000</div>
 
     <div id="canvas-container"></div>
 
 <script>
     // ================= 配置区域 =================
-    // 增加粒子数量，让树更茂密
     const PARTICLE_COUNT = 12000; 
     
     // ================= 场景初始化 =================
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x02050a, 0.025); // 雾气
+    scene.fog = new THREE.FogExp2(0x02050a, 0.02); 
     
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 7;
+    // 相机拉远一点，确保能看到树的全貌
+    camera.position.z = 8;
     camera.position.y = 0; 
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -85,16 +92,33 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // ================= 1. 高精度粒子树系统 =================
+    // ================= 关键修复：动态生成粒子贴图 =================
+    // 不再依赖网络图片，直接用代码画一个发光的圆
+    function createParticleTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const context = canvas.getContext('2d');
+        // 画一个径向渐变的光球
+        const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)');       // 中心白
+        gradient.addColorStop(0.4, 'rgba(255,255,255,0.5)');   // 中间半透明
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');             // 边缘透明
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 32, 32);
+        
+        const texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
+
+    // ================= 粒子系统 =================
     const particlesGeometry = new THREE.BufferGeometry();
     const particlesPositions = new Float32Array(PARTICLE_COUNT * 3);
     const particlesColors = new Float32Array(PARTICLE_COUNT * 3);
     const particlesSizes = new Float32Array(PARTICLE_COUNT);
     
-    // 存储树的原始形态坐标
     const treeOriginalPos = new Float32Array(PARTICLE_COUNT * 3);
-    // 存储爆炸后的随机扩散方向
-    const explosionDirs = new Float32Array(PARTICLE_COUNT * 3);
     
     const colorGreen = new THREE.Color('#2ecc71');
     const colorRed = new THREE.Color('#e74c3c');
@@ -104,43 +128,34 @@
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         const i3 = i * 3;
         
-        // --- 树形算法 (圆锥螺旋) ---
+        // 树形：圆锥螺旋
         const t = i / PARTICLE_COUNT; 
-        const angle = t * 120; // 螺旋更紧密
+        const angle = t * 100; // 螺旋密度
         
-        // 高度 y: -3.5 到 3.5
-        const y = (t * 7) - 3.5; 
-        // 半径 r: 底部宽，顶部尖，加随机扰动模拟树枝
-        const maxRadius = (1 - t) * 4.0; 
+        const y = (t * 8) - 4; // 高度 -4 到 4
+        const maxRadius = (1 - t) * 4.5; // 底部半径
         const r = Math.random() * maxRadius; 
         
         const x = r * Math.cos(angle);
         const z = r * Math.sin(angle);
 
-        // 存入原始树位置
         treeOriginalPos[i3] = x;
         treeOriginalPos[i3+1] = y;
         treeOriginalPos[i3+2] = z;
 
-        // 初始化当前位置 = 树位置
+        // 默认就在树的位置
         particlesPositions[i3] = x;
         particlesPositions[i3+1] = y;
         particlesPositions[i3+2] = z;
 
-        // 计算爆炸方向 (归一化向量)
-        const len = Math.sqrt(x*x + y*y + z*z) + 0.01;
-        explosionDirs[i3] = x / len;
-        explosionDirs[i3+1] = y / len;
-        explosionDirs[i3+2] = z / len;
-
-        // --- 颜色分配 ---
+        // 颜色逻辑
         let color = colorGreen;
-        let size = 0.04; 
+        let size = 0.08; // 基础大小调大，确保可见
         
         const rand = Math.random();
-        if (rand > 0.88) { color = colorRed; size = 0.09; } // 红球
-        else if (rand > 0.94) { color = colorGold; size = 0.12; } // 金星
-        else if (rand > 0.98) { color = colorWhite; size = 0.07; } // 白雪点缀
+        if (rand > 0.85) { color = colorRed; size = 0.15; } // 红球更大
+        else if (rand > 0.92) { color = colorGold; size = 0.18; } // 金球最大
+        else if (rand > 0.97) { color = colorWhite; size = 0.12; }
         
         particlesColors[i3] = color.r;
         particlesColors[i3+1] = color.g;
@@ -152,11 +167,11 @@
     particlesGeometry.setAttribute('color', new THREE.BufferAttribute(particlesColors, 3));
     particlesGeometry.setAttribute('size', new THREE.BufferAttribute(particlesSizes, 1));
 
-    // 高级闪烁材质
+    // Shader 材质
     const particleMaterial = new THREE.ShaderMaterial({
         uniforms: {
             time: { value: 0 },
-            pointTexture: { value: new THREE.TextureLoader().load("https://assets.codepen.io/127738/dotTexture.png") }
+            pointTexture: { value: createParticleTexture() } // 使用生成的贴图
         },
         vertexShader: `
             attribute float size;
@@ -166,11 +181,11 @@
                 vColor = color;
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 
-                // 呼吸闪烁：不同高度相位不同，产生流动感
-                float blink = 0.7 + 0.5 * sin(time * 3.0 + position.y * 2.0);
+                // 呼吸闪烁
+                float blink = 0.7 + 0.3 * sin(time * 3.0 + position.y);
                 
-                // 大小随距离衰减
-                gl_PointSize = size * (350.0 / -mvPosition.z) * blink;
+                // 距离衰减：常数300.0控制随距离变小的程度
+                gl_PointSize = size * (300.0 / -mvPosition.z) * blink;
                 gl_Position = projectionMatrix * mvPosition;
             }
         `,
@@ -180,7 +195,6 @@
             void main() {
                 gl_FragColor = vec4(vColor, 1.0);
                 gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
-                if (gl_FragColor.a < 0.1) discard;
             }
         `,
         blending: THREE.AdditiveBlending,
@@ -191,15 +205,24 @@
     const particleSystem = new THREE.Points(particlesGeometry, particleMaterial);
     scene.add(particleSystem);
 
-    // ================= 2. 氛围飘雪 =================
+    // ================= 飘雪 =================
     const snowGeo = new THREE.BufferGeometry();
-    const snowCount = 1500;
+    const snowCount = 1000;
     const snowPos = new Float32Array(snowCount * 3);
     for(let i=0; i<snowCount*3; i++) {
         snowPos[i] = (Math.random()-0.5) * 25;
     }
     snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
-    const snowMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.04, transparent: true, opacity: 0.4});
+    // 雪花也用生成的贴图，看起来更柔和
+    const snowMat = new THREE.PointsMaterial({
+        color: 0xffffff, 
+        size: 0.1, 
+        transparent: true, 
+        opacity: 0.6,
+        map: createParticleTexture(), 
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
     const snowSystem = new THREE.Points(snowGeo, snowMat);
     scene.add(snowSystem);
 
@@ -219,21 +242,19 @@
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0];
             
-            // 绘制绿色骨骼线
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#2ecc71', lineWidth: 2});
             drawLandmarks(canvasCtx, landmarks, {color: '#f1c40f', lineWidth: 1, radius: 2});
 
-            // 计算开合度
+            // 简单开合度算法
             const wrist = landmarks[0];
             const tips = [8, 12, 16, 20];
             let dist = 0;
             tips.forEach(i => dist += Math.hypot(landmarks[i].x - wrist.x, landmarks[i].y - wrist.y));
-            // 映射到 0~1
-            handOpenness = Math.max(0, Math.min(1, (dist/4 - 0.15) * 2.8));
+            handOpenness = Math.max(0, Math.min(1, (dist/4 - 0.1) * 2.5));
 
         } else {
-            // 无手势，自动闭合
-            handOpenness *= 0.92;
+            // 无手势，归零 (显示树)
+            handOpenness *= 0.9;
         }
     }
 
@@ -256,16 +277,15 @@
         const time = Date.now() * 0.001;
         particleMaterial.uniforms.time.value = time;
         
-        // 缓动动画
-        smoothedOpenness += (handOpenness - smoothedOpenness) * 0.08;
+        smoothedOpenness += (handOpenness - smoothedOpenness) * 0.1;
 
         const positions = particleSystem.geometry.attributes.position.array;
         
-        // 爆炸系数 (张开手越大约大)
+        // 爆炸扩散
         const explosionFactor = smoothedOpenness * 8.0; 
 
-        // 旋转树 (握拳时转得快，炸开时转得慢)
-        const rotationSpeed = 0.005 * (1 - smoothedOpenness * 0.8);
+        // 旋转
+        const rotationSpeed = 0.003;
         particleSystem.rotation.y += rotationSpeed;
 
         for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -274,40 +294,29 @@
             const oy = treeOriginalPos[i3+1];
             const oz = treeOriginalPos[i3+2];
 
-            // 计算目标位置
-            // 逻辑：原始位置 + (方向 * 爆发力)
-            // 加上一点正弦波扰动，让炸开的效果像烟花一样有波动
-            const noise = Math.sin(time + i) * 0.2 * smoothedOpenness;
+            // 噪点让爆炸更自然
+            const noise = Math.sin(time + i) * 0.3 * smoothedOpenness;
             
             const tx = ox + (ox * explosionFactor) + noise;
-            const ty = oy + (oy * explosionFactor * 0.8) + noise; // 高度扩散稍微收敛
+            const ty = oy + (oy * explosionFactor * 0.6) + noise; 
             const tz = oz + (oz * explosionFactor) + noise;
 
-            // 插值更新位置
             positions[i3] += (tx - positions[i3]) * 0.15;
             positions[i3+1] += (ty - positions[i3+1]) * 0.15;
             positions[i3+2] += (tz - positions[i3+2]) * 0.15;
         }
-        
         particleSystem.geometry.attributes.position.needsUpdate = true;
 
-        // 更新飘雪
+        // 飘雪
         const snowP = snowSystem.geometry.attributes.position.array;
         for(let i=1; i<snowCount*3; i+=3) {
-            snowP[i] -= 0.02; 
-            if(snowP[i] < -12) snowP[i] = 12; 
+            snowP[i] -= 0.03; 
+            if(snowP[i] < -10) snowP[i] = 10; 
         }
         snowSystem.geometry.attributes.position.needsUpdate = true;
 
-        // 标题透明度控制 (炸开时标题淡出，看粒子)
-        const titleEl = document.getElementById('title-overlay');
-        titleEl.style.opacity = 1 - smoothedOpenness;
-        // 如果手张开了，稍微放大标题增加冲击力
-        if(smoothedOpenness > 0.1) {
-            titleEl.style.transform = `scale(${1 + smoothedOpenness * 0.5})`;
-        } else {
-             titleEl.style.transform = `scale(1)`;
-        }
+        // 标题淡出
+        document.getElementById('title-overlay').style.opacity = 1 - smoothedOpenness;
 
         renderer.render(scene, camera);
     }
