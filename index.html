@@ -3,361 +3,336 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>挑战杯项目成果展示 | Project Showcase</title>
+    <title>3D 手势交互粒子系统</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
     <style>
-        /* --- 1. 全局样式 (保持原有的科技蓝风格) --- */
-        :root {
-            --primary-color: #2563eb; /* 科技蓝，适合学术竞赛 */
-            --dark-color: #0f172a;    /* 更深邃的深色，显专业 */
-            --light-color: #f1f5f9;
-            --gray-color: #64748b;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
-            font-family: 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
-            line-height: 1.6;
-            color: var(--dark-color);
-            background-color: var(--light-color);
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Roboto, sans-serif;
         }
 
-        html { scroll-behavior: smooth; }
-
-        /* --- 2. 导航栏 --- */
-        nav {
-            position: fixed;
+        #canvas-container {
+            position: absolute;
             top: 0;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 5%;
-        }
-
-        .logo {
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: var(--primary-color);
-            letter-spacing: 1px;
-        }
-
-        .nav-links {
-            list-style: none;
-            display: flex;
-            gap: 2rem;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: var(--dark-color);
-            font-weight: 600;
-            font-size: 0.95rem;
-            transition: color 0.3s;
-        }
-
-        .nav-links a:hover { color: var(--primary-color); }
-
-        /* --- 3. 科研轮播图 (Hero Section) --- */
-        .carousel-container {
-            margin-top: 60px;
-            position: relative;
-            width: 100%;
-            height: 550px; /* 稍微加高，显得大气 */
-            overflow: hidden;
-        }
-
-        .carousel-slide {
-            display: flex;
+            left: 0;
             width: 100%;
             height: 100%;
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
         }
 
-        .carousel-slide img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            filter: brightness(0.9); /* 稍微压暗图片，突出文字 */
-            flex-shrink: 0;
+        /* 用于 MediaPipe 的隐藏视频元素 */
+        .input_video {
+            display: none; 
         }
 
-        /* 轮播文字遮罩 (新增，用于写项目大标题) */
-        .hero-overlay {
+        /* UI 面板样式 */
+        #ui-panel {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            z-index: 20;
-            width: 80%;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-        }
-
-        .hero-overlay h1 { font-size: 3rem; margin-bottom: 1rem; }
-        .hero-overlay p { font-size: 1.2rem; opacity: 0.9; }
-
-        .carousel-btn {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(5px);
-            color: white;
-            border: none;
-            padding: 1rem;
-            cursor: pointer;
-            font-size: 1.5rem;
-            z-index: 25;
-            border-radius: 50%;
-            margin: 0 20px;
-            transition: background 0.3s;
-        }
-        .carousel-btn:hover { background: rgba(255,255,255,0.4); }
-        .prev-btn { left: 0; }
-        .next-btn { right: 0; }
-
-        /* --- 4. 核心创新点 (Project Grid) --- */
-        .section-container {
-            padding: 5rem 5%;
-            text-align: center;
-        }
-
-        .section-title {
-            margin-bottom: 1rem;
-            font-size: 2.2rem;
-            color: var(--dark-color);
-        }
-        
-        .section-subtitle {
-            color: var(--gray-color);
-            margin-bottom: 3rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2.5rem;
-        }
-
-        .product-card {
-            background: white;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px); /* 毛玻璃效果 */
+            padding: 20px;
             border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-            border: 1px solid rgba(0,0,0,0.05);
-        }
-
-        .product-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(37, 99, 235, 0.15); /* 悬浮时带蓝色光晕 */
-        }
-
-        .card-image-placeholder {
-            height: 180px;
-            background: #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #94a3b8;
-            font-size: 3rem;
-        }
-
-        .product-info { padding: 2rem; text-align: left; }
-        .product-info h3 { font-size: 1.4rem; margin-bottom: 0.8rem; color: var(--dark-color); }
-        .product-info p { color: var(--gray-color); margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.7; }
-        
-        .btn {
-            display: inline-block;
-            padding: 0.6rem 1.8rem;
-            background: var(--primary-color);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
-            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: 220px;
+        }
+
+        .ui-group { margin-bottom: 15px; }
+        .ui-label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;}
+
+        /* 按钮样式 */
+        .shape-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            margin: 4px;
             border-radius: 6px;
-            font-weight: 500;
-            transition: background 0.3s;
-            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
         }
-        
-        .btn:hover { background: #1d4ed8; }
+        .shape-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .shape-btn.active { background: #2563eb; border-color: #2563eb; }
 
-        /* --- 5. 团队联系 (Contact) --- */
-        .contact-section { background: white; }
-
-        .contact-form {
-            max-width: 600px;
-            margin: 0 auto;
-            text-align: left;
-            background: var(--light-color);
-            padding: 2rem;
-            border-radius: 12px;
+        /* 颜色选择器和全屏按钮 */
+        input[type="color"] {
+            width: 100%; height: 35px; border: none; border-radius: 6px; cursor: pointer;
         }
-
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; }
-        .form-group input, .form-group textarea {
-            width: 100%; padding: 0.9rem; border: 1px solid #cbd5e1;
-            border-radius: 6px; font-family: inherit; transition: border 0.3s;
+        #fullscreen-btn {
+            width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3); color: white; border-radius: 6px;
+            cursor: pointer; margin-top: 10px;
         }
-        .form-group input:focus, .form-group textarea:focus {
-            outline: none; border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
+        #fullscreen-btn:hover { background: rgba(255, 255, 255, 0.2); }
 
-        .submit-btn {
-            width: 100%; padding: 1rem; background: var(--dark-color);
-            color: white; border: none; border-radius: 6px; cursor: pointer;
-            font-size: 1rem; font-weight: 600; transition: opacity 0.3s;
-        }
-
-        .submit-btn:hover { opacity: 0.9; }
-
-        footer {
-            background: var(--dark-color); color: #94a3b8;
-            text-align: center; padding: 3rem 1rem; margin-top: 0;
-            font-size: 0.9rem;
-        }
-
-        @media (max-width: 768px) {
-            .nav-links { display: none; }
-            .carousel-container { height: 350px; }
-            .hero-overlay h1 { font-size: 1.8rem; }
+        /* 加载提示 */
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; z-index: 20; font-size: 1.2rem; pointer-events: none;
         }
     </style>
 </head>
 <body>
+    <div id="loading">正在启动摄像头和 AI 模型，请稍候...<br>(请允许摄像头权限)</div>
+    <video class="input_video"></video>
+    
+    <div id="canvas-container"></div>
 
-    <nav>
-        <div class="logo">Project: AlphaGo</div> 
-        <ul class="nav-links">
-            <li><a href="#home">项目概况</a></li>
-            <li><a href="#innovations">创新成果</a></li>
-            <li><a href="#contact">联系团队</a></li>
-        </ul>
-    </nav>
-
-    <section id="home" class="carousel-container">
-        <div class="hero-overlay">
-            <h1>基于深度学习的智能监测系统</h1>
-            <p>第十八届“挑战杯”全国大学生课外学术科技作品竞赛展示</p>
+    <div id="ui-panel">
+        <div class="ui-group">
+            <label class="ui-label">选择模型形状</label>
+            <button class="shape-btn active" data-shape="heart">爱心 ❤️</button>
+            <button class="shape-btn" data-shape="sphere">土星(球体) 🪐</button>
+            <button class="shape-btn" data-shape="cube">方块 🧊</button>
         </div>
-
-        <div class="carousel-slide">
-            <img src="https://picsum.photos/1200/600?random=10" alt="实验室场景">
-            <img src="https://picsum.photos/1200/600?random=11" alt="系统界面">
-            <img src="https://picsum.photos/1200/600?random=12" alt="团队合影">
+        <div class="ui-group">
+            <label class="ui-label">粒子颜色</label>
+            <input type="color" id="color-picker" value="#ff4444">
         </div>
-        <button class="carousel-btn prev-btn">&#10094;</button>
-        <button class="carousel-btn next-btn">&#10095;</button>
-    </section>
+        <button id="fullscreen-btn">📺 切换全屏</button>
+        <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">提示：伸出手掌对准摄像头。<br>握拳=聚合，张开=扩散。</p>
+    </div>
 
-    <section id="innovations" class="section-container">
-        <h2 class="section-title">核心创新点</h2>
-        <p class="section-subtitle">本项目致力于解决行业传统痛点，通过三项关键技术突破，实现了效率与精度的双重提升。</p>
-        
-        <div class="product-grid">
-            <div class="product-card">
-                <div class="card-image-placeholder">🧠</div> <div class="product-info">
-                    <h3>自研核心算法</h3>
-                    <p>提出了基于 Transformer 的改进模型，在复杂环境下的识别准确率提升了 35%，优于目前主流的 SOTA 方法。</p>
-                    <a href="detail.html" class="btn">查看算法细节</a>
-                </div>
-            </div>
 
-            <div class="product-card">
-                <div class="card-image-placeholder">⚙️</div>
-                <div class="product-info">
-                    <h3>分布式系统架构</h3>
-                    <p>采用云边端协同计算架构，将响应延迟降低至 20ms 以内，确保了系统在工业场景下的实时性要求。</p>
-                    <a href="#" class="btn">查看架构图</a>
-                </div>
-            </div>
+<script>
+    // ================= 配置区域 =================
+    const PARTICLE_COUNT = 5000; // 粒子数量，过多会卡顿
+    const PARTICLE_SIZE = 0.05;  // 粒子大小
+    let currentColor = 0xff4444; // 初始颜色
+    let currentShape = 'heart';  // 初始形状
 
-            <div class="product-card">
-                <div class="card-image-placeholder">🚀</div>
-                <div class="product-info">
-                    <h3>广阔应用前景</h3>
-                    <p>项目成果已在 3 家企业进行试点应用，帮助企业节约人力成本约 50 万元/年，具有显著的经济效益。</p>
-                    <a href="#" class="btn">查看应用案例</a>
-                </div>
-            </div>
-        </div>
-    </section>
+    // ================= Three.js 基础设置 =================
+    const scene = new THREE.Scene();
+    // 添加一点迷雾效果
+    scene.fog = new THREE.FogExp2(0x000000, 0.02);
+    
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 5;
 
-    <section id="contact" class="section-container contact-section">
-        <h2 class="section-title">项目合作与交流</h2>
-        <p class="section-subtitle">如有意向了解更多技术细节或洽谈合作，请留下您的联系方式。</p>
-        <form class="contact-form" id="bookingForm">
-            <div class="form-group">
-                <label for="name">您的姓名 / 单位</label>
-                <input type="text" id="name" required placeholder="请输入...">
-            </div>
-            <div class="form-group">
-                <label for="email">联系邮箱</label>
-                <input type="email" id="email" required placeholder="example@university.edu.cn">
-            </div>
-            <div class="form-group">
-                <label for="message">咨询内容</label>
-                <textarea id="message" rows="4" required placeholder="例如：希望能获取项目的技术白皮书..."></textarea>
-            </div>
-            <button type="submit" class="submit-btn">发送信息</button>
-        </form>
-    </section>
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    <footer>
-        <p>&copy; 2025 挑战杯项目组 | XX大学计算机学院 版权所有</p>
-        <p style="margin-top:0.5rem; opacity: 0.6; font-size: 0.8rem;">Supported by National College Student Innovation Training Program</p>
-    </footer>
+    // ================= 粒子系统核心 =================
+    // 存储不同形状的目标位置数据
+    const shapes = {
+        heart: new Float32Array(PARTICLE_COUNT * 3),
+        sphere: new Float32Array(PARTICLE_COUNT * 3),
+        cube: new Float32Array(PARTICLE_COUNT * 3)
+    };
 
-    <script>
-        // --- 轮播图逻辑 (保持不变，功能稳定) ---
-        const slideContainer = document.querySelector('.carousel-slide');
-        const images = document.querySelectorAll('.carousel-slide img');
-        const prevBtn = document.querySelector('.prev-btn');
-        const nextBtn = document.querySelector('.next-btn');
+    // 预计算形状数据的函数
+    function precomputeShapes() {
+        const v3 = new THREE.Vector3();
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const i3 = i * 3;
 
-        let counter = 0;
-        const size = 100; 
+            // 1. 爱心形状 (数学参数方程)
+            const t = Math.random() * Math.PI * 2;
+            // 这是一个更饱满的爱心方程
+            let x = 16 * Math.pow(Math.sin(t), 3);
+            let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+            let z = (Math.random() - 0.5) * 4; // 增加一点厚度
+            v3.set(x, y, z).multiplyScalar(0.15); // 缩放
+            shapes.heart[i3] = v3.x; shapes.heart[i3+1] = v3.y; shapes.heart[i3+2] = v3.z;
 
-        function updateSlide() {
-            slideContainer.style.transform = 'translateX(' + (-size * counter) + '%)';
+            // 2. 球体 (土星主体)
+            const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
+            const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
+            v3.setFromSphericalCoords(2.5, phi, theta); // 半径2.5
+            shapes.sphere[i3] = v3.x; shapes.sphere[i3+1] = v3.y; shapes.sphere[i3+2] = v3.z;
+
+            // 3. 方块 (随机分布在立方体内)
+            const boxSize = 4;
+            v3.set(
+                (Math.random() - 0.5) * boxSize,
+                (Math.random() - 0.5) * boxSize,
+                (Math.random() - 0.5) * boxSize
+            );
+            shapes.cube[i3] = v3.x; shapes.cube[i3+1] = v3.y; shapes.cube[i3+2] = v3.z;
         }
+    }
+    precomputeShapes();
 
-        nextBtn.addEventListener('click', () => {
-            if (counter >= images.length - 1) counter = -1;
-            counter++;
-            updateSlide();
+    // 创建实际显示的粒子几何体
+    const geometry = new THREE.BufferGeometry();
+    // 初始位置先全部设为0
+    const positions = new Float32Array(PARTICLE_COUNT * 3);
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    // 粒子材质
+    const material = new THREE.PointsMaterial({
+        color: currentColor,
+        size: PARTICLE_SIZE,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending, // 发光叠加模式
+        depthWrite: false
+    });
+
+    const particleSystem = new THREE.Points(geometry, material);
+    scene.add(particleSystem);
+
+
+    // ================= MediaPipe 手势识别 =================
+    let handOpenness = 0; // 0 = 握拳, 1 = 完全张开
+
+    const videoElement = document.getElementsByClassName('input_video')[0];
+
+    function onResults(results) {
+        document.getElementById('loading').style.display = 'none';
+
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            // 只取第一只手
+            const landmarks = results.multiHandLandmarks[0];
+            
+            // 计算简单的手掌开合度：计算指尖(索引 8,12,16,20)到手腕(索引 0)的平均距离
+            const wrist = landmarks[0];
+            const fingertips = [8, 12, 16, 20];
+            let totalDistance = 0;
+            
+            fingertips.forEach(tipIndex => {
+                const tip = landmarks[tipIndex];
+                // 计算简单的欧几里得距离 (这里只用x和y做近似，足够了)
+                const dx = tip.x - wrist.x;
+                const dy = tip.y - wrist.y;
+                totalDistance += Math.sqrt(dx*dx + dy*dy);
+            });
+            
+            const avgDistance = totalDistance / 4;
+            // 根据经验，距离在 0.2 到 0.6 之间变化。将其映射到 0-1 之间。
+            // 可以根据实际体验微调这里的数值
+            handOpenness = Math.max(0, Math.min(1, (avgDistance - 0.15) * 2.5));
+        } else {
+            // 如果没有检测到手，缓慢回到张开状态
+             handOpenness = (handOpenness * 0.95) + (1 * 0.05);
+        }
+    }
+
+    const hands = new Hands({locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+    }});
+    hands.setOptions({
+        maxNumHands: 1, // 只检测单手
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+    hands.onResults(onResults);
+
+    const cameraUtils = new Camera(videoElement, {
+        onFrame: async () => {
+            await hands.send({image: videoElement});
+        },
+        width: 640,
+        height: 480
+    });
+    cameraUtils.start();
+
+
+    // ================= 动画循环 & 交互逻辑 =================
+    
+    // 缓动系数，让动作更平滑
+    let smoothedOpenness = 1;
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // 平滑手势数值
+        smoothedOpenness += (handOpenness - smoothedOpenness) * 0.1;
+
+        const currentPositions = geometry.attributes.position.array;
+        const targetShapeData = shapes[currentShape];
+
+        // 核心逻辑：根据手势更新粒子位置
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const i3 = i * 3;
+            
+            // 获取当前粒子的目标形状位置
+            const tx = targetShapeData[i3];
+            const ty = targetShapeData[i3 + 1];
+            const tz = targetShapeData[i3 + 2];
+
+            // 计算扩散方向 (简单的从原点向外)
+            const dist = Math.sqrt(tx*tx + ty*ty + tz*tz) + 0.001; // 防止除以0
+            const dirX = tx / dist;
+            const dirY = ty / dist;
+            const dirZ = tz / dist;
+
+            // 扩散力度：手张得越大，扩散越远
+            const explodeFactor = smoothedOpenness * 5.0; // 最大扩散5倍距离
+
+            // 线性插值：在“聚合形态”和“扩散形态”之间过渡
+            // 当 smoothedOpenness 接近 0 (握拳)，粒子靠近 targetShapeData
+            // 当 smoothedOpenness 接近 1 (张开)，粒子向外爆炸
+            currentPositions[i3] = tx + dirX * explodeFactor * dist;
+            currentPositions[i3 + 1] = ty + dirY * explodeFactor * dist;
+            currentPositions[i3 + 2] = tz + dirZ * explodeFactor * dist;
+        }
+        // 告诉 Three.js 位置数据已更新
+        geometry.attributes.position.needsUpdate = true;
+
+        // 缓慢旋转整个粒子系统
+        particleSystem.rotation.y += 0.002;
+        particleSystem.rotation.x += 0.001;
+
+        renderer.render(scene, camera);
+    }
+    animate();
+
+
+    // ================= UI 事件监听 =================
+
+    // 1. 形状切换
+    document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // 更新按钮状态
+            document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            // 更新形状变量
+            currentShape = e.target.dataset.shape;
         });
+    });
 
-        prevBtn.addEventListener('click', () => {
-            if (counter <= 0) counter = images.length;
-            counter--;
-            updateSlide();
-        });
+    // 2. 颜色选择
+    const colorPicker = document.getElementById('color-picker');
+    colorPicker.addEventListener('input', (e) => {
+        const hexColor = e.target.value;
+        material.color.set(hexColor);
+    });
 
-        setInterval(() => {
-            if (counter >= images.length - 1) counter = -1;
-            counter++;
-            updateSlide();
-        }, 5000);
+    // 3. 全屏控制
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    });
 
-        // --- 表单提交逻辑 ---
-        const form = document.getElementById('bookingForm');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = document.getElementById('name').value;
-            alert(`感谢关注！${name}，您的咨询已发送至项目组邮箱，我们会尽快回复。`);
-            form.reset();
-        });
-    </script>
+    // 窗口大小改变自适应
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+</script>
 </body>
 </html>
