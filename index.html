@@ -27,9 +27,20 @@
             z-index: 1;
         }
 
-        /* 用于 MediaPipe 的隐藏视频元素 */
+        /* --- 修改处：摄像头画面样式 --- */
         .input_video {
-            display: none; 
+            display: block; /* 改为显示 */
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: 160px;  /* 画面宽度 */
+            height: 120px; /* 画面高度 */
+            z-index: 20;   /* 确保在最上层 */
+            border-radius: 8px; /* 圆角 */
+            border: 2px solid rgba(255, 255, 255, 0.3); /* 半透明边框 */
+            opacity: 0.8;  /* 微微透明，不遮挡太多背景 */
+            transform: scaleX(-1); /* 镜像翻转，符合照镜子习惯 */
+            object-fit: cover; /* 保持比例填充 */
         }
 
         /* UI 面板样式 */
@@ -81,11 +92,13 @@
         #loading {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             color: white; z-index: 20; font-size: 1.2rem; pointer-events: none;
+            text-align: center; line-height: 1.6;
         }
     </style>
 </head>
 <body>
-    <div id="loading">正在启动摄像头和 AI 模型，请稍候...<br>(请允许摄像头权限)</div>
+    <div id="loading">正在启动摄像头和 AI 模型...<br>请在弹窗中点击“允许”</div>
+    
     <video class="input_video"></video>
     
     <div id="canvas-container"></div>
@@ -102,20 +115,19 @@
             <input type="color" id="color-picker" value="#ff4444">
         </div>
         <button id="fullscreen-btn">📺 切换全屏</button>
-        <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">提示：伸出手掌对准摄像头。<br>握拳=聚合，张开=扩散。</p>
+        <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">提示：伸出手掌对准左上角画面。<br>握拳=聚合，张开=扩散。</p>
     </div>
 
 
 <script>
     // ================= 配置区域 =================
-    const PARTICLE_COUNT = 5000; // 粒子数量，过多会卡顿
-    const PARTICLE_SIZE = 0.05;  // 粒子大小
-    let currentColor = 0xff4444; // 初始颜色
-    let currentShape = 'heart';  // 初始形状
+    const PARTICLE_COUNT = 5000; 
+    const PARTICLE_SIZE = 0.05;  
+    let currentColor = 0xff4444; 
+    let currentShape = 'heart';  
 
     // ================= Three.js 基础设置 =================
     const scene = new THREE.Scene();
-    // 添加一点迷雾效果
     scene.fog = new THREE.FogExp2(0x000000, 0.02);
     
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -127,35 +139,32 @@
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
     // ================= 粒子系统核心 =================
-    // 存储不同形状的目标位置数据
     const shapes = {
         heart: new Float32Array(PARTICLE_COUNT * 3),
         sphere: new Float32Array(PARTICLE_COUNT * 3),
         cube: new Float32Array(PARTICLE_COUNT * 3)
     };
 
-    // 预计算形状数据的函数
     function precomputeShapes() {
         const v3 = new THREE.Vector3();
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             const i3 = i * 3;
 
-            // 1. 爱心形状 (数学参数方程)
+            // 1. 爱心
             const t = Math.random() * Math.PI * 2;
-            // 这是一个更饱满的爱心方程
             let x = 16 * Math.pow(Math.sin(t), 3);
             let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-            let z = (Math.random() - 0.5) * 4; // 增加一点厚度
-            v3.set(x, y, z).multiplyScalar(0.15); // 缩放
+            let z = (Math.random() - 0.5) * 4; 
+            v3.set(x, y, z).multiplyScalar(0.15); 
             shapes.heart[i3] = v3.x; shapes.heart[i3+1] = v3.y; shapes.heart[i3+2] = v3.z;
 
-            // 2. 球体 (土星主体)
+            // 2. 球体
             const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
             const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
-            v3.setFromSphericalCoords(2.5, phi, theta); // 半径2.5
+            v3.setFromSphericalCoords(2.5, phi, theta); 
             shapes.sphere[i3] = v3.x; shapes.sphere[i3+1] = v3.y; shapes.sphere[i3+2] = v3.z;
 
-            // 3. 方块 (随机分布在立方体内)
+            // 3. 方块
             const boxSize = 4;
             v3.set(
                 (Math.random() - 0.5) * boxSize,
@@ -167,19 +176,16 @@
     }
     precomputeShapes();
 
-    // 创建实际显示的粒子几何体
     const geometry = new THREE.BufferGeometry();
-    // 初始位置先全部设为0
     const positions = new Float32Array(PARTICLE_COUNT * 3);
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-    // 粒子材质
     const material = new THREE.PointsMaterial({
         color: currentColor,
         size: PARTICLE_SIZE,
         transparent: true,
         opacity: 0.8,
-        blending: THREE.AdditiveBlending, // 发光叠加模式
+        blending: THREE.AdditiveBlending, 
         depthWrite: false
     });
 
@@ -188,36 +194,28 @@
 
 
     // ================= MediaPipe 手势识别 =================
-    let handOpenness = 0; // 0 = 握拳, 1 = 完全张开
-
+    let handOpenness = 0; 
     const videoElement = document.getElementsByClassName('input_video')[0];
 
     function onResults(results) {
         document.getElementById('loading').style.display = 'none';
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            // 只取第一只手
             const landmarks = results.multiHandLandmarks[0];
-            
-            // 计算简单的手掌开合度：计算指尖(索引 8,12,16,20)到手腕(索引 0)的平均距离
             const wrist = landmarks[0];
             const fingertips = [8, 12, 16, 20];
             let totalDistance = 0;
             
             fingertips.forEach(tipIndex => {
                 const tip = landmarks[tipIndex];
-                // 计算简单的欧几里得距离 (这里只用x和y做近似，足够了)
                 const dx = tip.x - wrist.x;
                 const dy = tip.y - wrist.y;
                 totalDistance += Math.sqrt(dx*dx + dy*dy);
             });
             
             const avgDistance = totalDistance / 4;
-            // 根据经验，距离在 0.2 到 0.6 之间变化。将其映射到 0-1 之间。
-            // 可以根据实际体验微调这里的数值
             handOpenness = Math.max(0, Math.min(1, (avgDistance - 0.15) * 2.5));
         } else {
-            // 如果没有检测到手，缓慢回到张开状态
              handOpenness = (handOpenness * 0.95) + (1 * 0.05);
         }
     }
@@ -226,7 +224,7 @@
         return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
     }});
     hands.setOptions({
-        maxNumHands: 1, // 只检测单手
+        maxNumHands: 1, 
         modelComplexity: 1,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
@@ -244,77 +242,54 @@
 
 
     // ================= 动画循环 & 交互逻辑 =================
-    
-    // 缓动系数，让动作更平滑
     let smoothedOpenness = 1;
 
     function animate() {
         requestAnimationFrame(animate);
-
-        // 平滑手势数值
         smoothedOpenness += (handOpenness - smoothedOpenness) * 0.1;
 
         const currentPositions = geometry.attributes.position.array;
         const targetShapeData = shapes[currentShape];
 
-        // 核心逻辑：根据手势更新粒子位置
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             const i3 = i * 3;
-            
-            // 获取当前粒子的目标形状位置
             const tx = targetShapeData[i3];
             const ty = targetShapeData[i3 + 1];
             const tz = targetShapeData[i3 + 2];
 
-            // 计算扩散方向 (简单的从原点向外)
-            const dist = Math.sqrt(tx*tx + ty*ty + tz*tz) + 0.001; // 防止除以0
+            const dist = Math.sqrt(tx*tx + ty*ty + tz*tz) + 0.001; 
             const dirX = tx / dist;
             const dirY = ty / dist;
             const dirZ = tz / dist;
 
-            // 扩散力度：手张得越大，扩散越远
-            const explodeFactor = smoothedOpenness * 5.0; // 最大扩散5倍距离
+            const explodeFactor = smoothedOpenness * 5.0; 
 
-            // 线性插值：在“聚合形态”和“扩散形态”之间过渡
-            // 当 smoothedOpenness 接近 0 (握拳)，粒子靠近 targetShapeData
-            // 当 smoothedOpenness 接近 1 (张开)，粒子向外爆炸
             currentPositions[i3] = tx + dirX * explodeFactor * dist;
             currentPositions[i3 + 1] = ty + dirY * explodeFactor * dist;
             currentPositions[i3 + 2] = tz + dirZ * explodeFactor * dist;
         }
-        // 告诉 Three.js 位置数据已更新
         geometry.attributes.position.needsUpdate = true;
-
-        // 缓慢旋转整个粒子系统
         particleSystem.rotation.y += 0.002;
         particleSystem.rotation.x += 0.001;
-
         renderer.render(scene, camera);
     }
     animate();
 
-
     // ================= UI 事件监听 =================
-
-    // 1. 形状切换
     document.querySelectorAll('.shape-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            // 更新按钮状态
             document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-            // 更新形状变量
             currentShape = e.target.dataset.shape;
         });
     });
 
-    // 2. 颜色选择
     const colorPicker = document.getElementById('color-picker');
     colorPicker.addEventListener('input', (e) => {
         const hexColor = e.target.value;
         material.color.set(hexColor);
     });
 
-    // 3. 全屏控制
     const fullscreenBtn = document.getElementById('fullscreen-btn');
     fullscreenBtn.addEventListener('click', () => {
         if (!document.fullscreenElement) {
@@ -326,13 +301,11 @@
         }
     });
 
-    // 窗口大小改变自适应
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
-
 </script>
 </body>
 </html>
