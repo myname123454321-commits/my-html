@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>圣诞快乐 - 交互贺卡</title>
+    <title>圣诞树挂件相册</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
@@ -12,48 +12,44 @@
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 
     <style>
-        body { margin: 0; overflow: hidden; background-color: #02050a; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #050a14; font-family: 'Segoe UI', sans-serif; }
         
-        /* 1. 中文标题样式修改 */
         #title-overlay {
-            position: absolute; width: 100%; top: 10%; text-align: center; pointer-events: none; z-index: 5;
+            position: absolute; width: 100%; top: 5%; text-align: center; pointer-events: none; z-index: 5;
             transition: opacity 1s;
         }
         h1 {
-            font-family: 'Ma Shan Zheng', cursive; /* 使用中文书法字体 */
+            font-family: 'Ma Shan Zheng', cursive; 
             color: #ffd700; 
-            font-size: 5rem; /* 稍微调整大小适配中文 */
+            font-size: 5rem; 
             margin: 0;
-            letter-spacing: 10px;
-            text-shadow: 0 0 10px #ff0000, 0 0 20px #ffd700, 0 0 40px #ff0000;
-            animation: glow 2s ease-in-out infinite alternate;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px #ff0000, 0 0 20px #ffd700;
+            animation: glow 3s ease-in-out infinite alternate;
         }
-        @keyframes glow { from { text-shadow: 0 0 10px #ff0000, 0 0 20px #ffd700; } to { text-shadow: 0 0 20px #ff0000, 0 0 40px #ffd700, 0 0 60px #ff0000; } }
+        @keyframes glow { from { opacity: 0.8; text-shadow: 0 0 10px #ff0000; } to { opacity: 1; text-shadow: 0 0 30px #ffd700, 0 0 50px #ff0000; } }
 
-        /* 左上角摄像头 */
         #camera-container {
             position: absolute; top: 20px; left: 20px; width: 240px; height: 180px; z-index: 20;
-            border-radius: 12px; overflow: hidden; border: 2px solid rgba(255, 215, 0, 0.6);
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); transform: scaleX(-1);
-            background: rgba(0,0,0,0.5);
+            border-radius: 12px; overflow: hidden; border: 2px solid rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2); transform: scaleX(-1);
+            background: #000;
         }
-        .input_video { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
+        .input_video { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
         .output_canvas { position: absolute; width: 100%; height: 100%; }
 
-        /* UI 指引 */
         #guide-panel {
-            position: absolute; bottom: 30px; width: 100%; text-align: center; color: white; z-index: 10;
-            pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            position: absolute; bottom: 30px; width: 100%; text-align: center; color: rgba(255,255,255,0.8); z-index: 10;
+            pointer-events: none; font-size: 0.9rem;
         }
-        .guide-item { display: inline-block; margin: 0 20px; background: rgba(0,0,0,0.4); padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); }
-        .key { color: #ffd700; font-weight: bold; font-size: 1.2rem; }
+        .key { color: #ffd700; font-weight: bold; margin: 0 5px; }
 
         #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
         #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #ffd700; font-size: 1.5rem; z-index: 100; text-align: center; }
     </style>
 </head>
 <body>
-    <div id="loading">🎁 正在布置圣诞场景...<br>请允许摄像头权限</div>
+    <div id="loading">🎄 正在挂载礼物...<br>请允许摄像头权限</div>
 
     <div id="title-overlay">
         <h1>圣诞快乐</h1>
@@ -65,90 +61,88 @@
     </div>
 
     <div id="guide-panel">
-        <div class="guide-item"><span class="key">✊ 握拳</span> 圣诞树</div>
-        <div class="guide-item"><span class="key">✋ 张开</span> 看照片</div>
-        <div class="guide-item"><span class="key">👈 移动 👉</span> 旋转</div>
-        <div class="guide-item"><span class="key">👌 捏合</span> 放大</div>
+        <span class="key">✊ 握拳</span> 旋转展示 &nbsp;|&nbsp; 
+        <span class="key">✋ 张开</span> 放大查看 &nbsp;|&nbsp; 
+        <span class="key">👈 挥手 👉</span> 控制旋转 &nbsp;|&nbsp; 
+        <span class="key">👌 捏合</span> 选中照片
     </div>
 
     <div id="canvas-container"></div>
 
 <script>
-    // ================= 配置 =================
-    const PARTICLE_COUNT = 8000;
+    // ================= 配置区域 =================
+    const PARTICLE_COUNT = 6000; 
     
-    // 2. 这里修改了图片路径，使用你上传的图片
-    // 为了让画廊好看，我们将这一张照片重复使用 6 次，形成一个环
+    // 图片路径 (确保文件名正确)
     const IMG_URL = './4c8e14a7eeee433eb7dfcb541fd2b6e8_1.jpg';
+    // 复制6份，挂在树的不同高度和角度
     const PHOTOS = [IMG_URL, IMG_URL, IMG_URL, IMG_URL, IMG_URL, IMG_URL];
     
     // ================= 场景初始化 =================
     const scene = new THREE.Scene();
-    // 雾气颜色调深，让发光粒子更明显
-    scene.fog = new THREE.FogExp2(0x02050a, 0.02);
+    // 使用更深的雾，突出前景
+    scene.fog = new THREE.FogExp2(0x050a14, 0.02);
     
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    // 调整相机位置，确保能完整看到树
-    camera.position.z = 7; 
+    camera.position.z = 8;
     camera.position.y = 0; 
-    camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // ================= 1. 修复后的粒子圣诞树系统 =================
+    // 创建一个包含树和照片的整体组，方便一起旋转
+    const christmasGroup = new THREE.Group();
+    scene.add(christmasGroup);
+
+    // ================= 1. 粒子圣诞树 (更粗壮、更亮) =================
     const particlesGeometry = new THREE.BufferGeometry();
     const particlesPositions = new Float32Array(PARTICLE_COUNT * 3);
     const particlesColors = new Float32Array(PARTICLE_COUNT * 3);
     const particlesSizes = new Float32Array(PARTICLE_COUNT);
     
-    // 目标位置缓存 (树的形态)
-    const treePositions = new Float32Array(PARTICLE_COUNT * 3);
+    // 记录每个粒子在树上的原始位置
+    const treeOriginalPos = new Float32Array(PARTICLE_COUNT * 3);
     
-    const colorGreen = new THREE.Color('#2ecc71');
-    const colorRed = new THREE.Color('#e74c3c');
+    const colorGreen = new THREE.Color('#27ae60'); // 更鲜艳的绿
+    const colorRed = new THREE.Color('#c0392b');
     const colorGold = new THREE.Color('#f1c40f');
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         const i3 = i * 3;
         
-        // --- 圣诞树生成逻辑优化 ---
-        // 使用圆锥螺旋算法，确保底部大顶部尖
-        const t = i / PARTICLE_COUNT; // 0 到 1
-        const angle = t * 80; // 螺旋圈数增加，更茂密
+        // 螺旋圆锥算法
+        const t = i / PARTICLE_COUNT; 
+        const angle = t * 50; // 螺旋圈数
         
-        // 半径随高度变化：底部宽，顶部窄
-        // y 从 -3 到 3
-        const y = (t * 6) - 3; 
-        const maxRadius = (1 - t) * 3.5; // 底部半径 3.5
-        const r = Math.random() * maxRadius; // 填充内部
+        // y从下到上：-4 到 3
+        const y = (t * 7) - 4; 
+        // 半径：底部宽(3.5)，顶部尖(0)
+        const maxRadius = (1 - t) * 3.5; 
+        // 随机填充半径内部，让树有厚度
+        const r = Math.random() * maxRadius; 
         
         const x = r * Math.cos(angle);
         const z = r * Math.sin(angle);
 
-        treePositions[i3] = x;
-        treePositions[i3+1] = y;
-        treePositions[i3+2] = z;
+        // 存入原始位置
+        treeOriginalPos[i3] = x;
+        treeOriginalPos[i3+1] = y;
+        treeOriginalPos[i3+2] = z;
 
-        // 初始位置设为树的位置 (这样默认状态就是树)
+        // 初始化位置
         particlesPositions[i3] = x;
         particlesPositions[i3+1] = y;
         particlesPositions[i3+2] = z;
 
-        // 颜色分配：80%绿，10%红，10%金
+        // 颜色逻辑
         let color = colorGreen;
-        let size = 0.04; // 基础大小稍微加大
+        let size = 0.06; 
         
-        if (Math.random() > 0.85) { 
-            color = colorRed; 
-            size = 0.08; // 红色装饰球大一点
-        } 
-        if (Math.random() > 0.92) { 
-            color = colorGold; 
-            size = 0.10; // 金色星星最大
-        } 
+        // 增加装饰密度
+        if (Math.random() > 0.85) { color = colorRed; size = 0.12; } 
+        if (Math.random() > 0.90) { color = colorGold; size = 0.15; } 
         
         particlesColors[i3] = color.r;
         particlesColors[i3+1] = color.g;
@@ -160,7 +154,7 @@
     particlesGeometry.setAttribute('color', new THREE.BufferAttribute(particlesColors, 3));
     particlesGeometry.setAttribute('size', new THREE.BufferAttribute(particlesSizes, 1));
 
-    // Shader 材质：确保闪烁效果
+    // 使用 Shader 实现更亮的闪烁点
     const particleMaterial = new THREE.ShaderMaterial({
         uniforms: {
             time: { value: 0 },
@@ -173,11 +167,8 @@
             void main() {
                 vColor = color;
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                
-                // 闪烁算法：基于时间和位置的正弦波
-                float blink = 0.8 + 0.5 * sin(time * 3.0 + position.y * 5.0);
-                
-                // 距离衰减
+                // 闪烁速度加快，幅度加大
+                float blink = 0.8 + 0.4 * sin(time * 4.0 + position.y * 3.0 + position.x);
                 gl_PointSize = size * (300.0 / -mvPosition.z) * blink;
                 gl_Position = projectionMatrix * mvPosition;
             }
@@ -187,8 +178,8 @@
             varying vec3 vColor;
             void main() {
                 gl_FragColor = vec4(vColor, 1.0);
-                // 使用贴图让圆点更柔和
                 gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
+                if (gl_FragColor.a < 0.1) discard; // 剔除透明像素
             }
         `,
         blending: THREE.AdditiveBlending,
@@ -197,50 +188,67 @@
     });
 
     const particleSystem = new THREE.Points(particlesGeometry, particleMaterial);
-    scene.add(particleSystem);
+    christmasGroup.add(particleSystem); // 加到组里
 
-    // ================= 2. 3D 交互画廊 =================
-    const galleryGroup = new THREE.Group();
+    // ================= 2. 挂件照片 (螺旋排列在树上) =================
     const photoMeshes = [];
-    const galleryRadius = 4.0; 
-
     const textureLoader = new THREE.TextureLoader();
     
     PHOTOS.forEach((url, index) => {
         textureLoader.load(url, (texture) => {
-            // 调整画框比例 3:4
-            const geometry = new THREE.PlaneGeometry(1.5, 2.0);
+            const geometry = new THREE.PlaneGeometry(1.2, 1.6); // 照片比例
+            // 给照片加个金边材质，看起来像卡片
             const material = new THREE.MeshBasicMaterial({ 
                 map: texture, 
                 side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.9
             });
             const mesh = new THREE.Mesh(geometry, material);
             
-            const angle = (index / PHOTOS.length) * Math.PI * 2;
-            mesh.position.x = Math.cos(angle) * galleryRadius;
-            mesh.position.z = Math.sin(angle) * galleryRadius;
-            mesh.rotation.y = -angle + Math.PI / 2; 
+            // --- 关键：计算挂在树上的位置 ---
+            // 将照片均匀分布在螺旋线上，从下往上
+            const t = index / PHOTOS.length; // 0 ~ 1
+            const y = (t * 5) - 2.5; // 高度分布 -2.5 到 2.5
+            // 半径根据高度算出树的表面位置 (稍微向外一点点，以免被粒子埋没)
+            const r = (1 - (y + 4)/7) * 3.5 + 0.5; 
+            const angle = index * (Math.PI * 2 / 3); // 每张照片转 120度，螺旋上升
+
+            const x = r * Math.cos(angle);
+            const z = r * Math.sin(angle);
+
+            mesh.position.set(x, y, z);
             
-            galleryGroup.add(mesh);
+            // 让照片面向外部
+            mesh.lookAt(x * 2, y, z * 2);
+
+            // 存一下“挂在树上”的状态数据
+            mesh.userData = {
+                treePos: new THREE.Vector3(x, y, z),
+                treeScale: new THREE.Vector3(0.4, 0.4, 0.4), // 默认很小，像挂件
+                galleryPos: new THREE.Vector3(x * 2.5, y * 0.5, z * 2.5), // 炸开后的位置
+                galleryScale: new THREE.Vector3(1.2, 1.2, 1.2) // 炸开后变大
+            };
+            
+            // 初始状态
+            mesh.scale.copy(mesh.userData.treeScale);
+
+            christmasGroup.add(mesh);
             photoMeshes.push(mesh);
         });
     });
-    scene.add(galleryGroup);
-    galleryGroup.visible = false; 
 
-    // ================= 3. 飘雪系统 =================
+    // ================= 3. 环境氛围 (飘雪) =================
     const snowGeo = new THREE.BufferGeometry();
-    const snowCount = 2000;
+    const snowCount = 1000;
     const snowPos = new Float32Array(snowCount * 3);
-    for(let i=0; i<snowCount*3; i++) snowPos[i] = (Math.random()-0.5)*30;
+    for(let i=0; i<snowCount*3; i++) {
+        snowPos[i] = (Math.random()-0.5) * 20;
+    }
     snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
-    const snowMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.05, transparent: true, opacity: 0.6});
+    const snowMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.05, transparent: true, opacity: 0.5});
     const snowSystem = new THREE.Points(snowGeo, snowMat);
-    scene.add(snowSystem);
+    scene.add(snowSystem); // 雪是全局的，不随树转
 
-    // ================= 手势识别逻辑 =================
+    // ================= 手势识别 =================
     let handOpenness = 0; 
     let handX = 0.5;      
     let isPinching = false; 
@@ -261,33 +269,29 @@
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
             drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 1, radius: 2});
 
+            // 开合度
             const wrist = landmarks[0];
             const tips = [8, 12, 16, 20];
             let dist = 0;
-            tips.forEach(i => {
-                const dx = landmarks[i].x - wrist.x;
-                const dy = landmarks[i].y - wrist.y;
-                dist += Math.sqrt(dx*dx + dy*dy);
-            });
+            tips.forEach(i => dist += Math.hypot(landmarks[i].x - wrist.x, landmarks[i].y - wrist.y));
             handOpenness = Math.max(0, Math.min(1, (dist/4 - 0.15) * 3));
 
+            // 旋转控制
             handX = landmarks[9].x; 
 
-            const dx = landmarks[8].x - landmarks[4].x;
-            const dy = landmarks[8].y - landmarks[4].y;
-            const pinchDist = Math.sqrt(dx*dx + dy*dy);
+            // 捏合检测
+            const pinchDist = Math.hypot(landmarks[8].x - landmarks[4].x, landmarks[8].y - landmarks[4].y);
             isPinching = pinchDist < 0.05; 
-
             if(isPinching) {
                 canvasCtx.beginPath();
-                canvasCtx.arc(landmarks[8].x * canvasElement.width, landmarks[8].y * canvasElement.height, 10, 0, 2*Math.PI);
-                canvasCtx.fillStyle = "yellow";
+                canvasCtx.arc(landmarks[8].x * canvasElement.width, landmarks[8].y * canvasElement.height, 15, 0, 2*Math.PI);
+                canvasCtx.fillStyle = "rgba(255, 215, 0, 0.5)";
                 canvasCtx.fill();
             }
 
         } else {
-            // 无手势时：强制归零（变回圣诞树）
-            handOpenness = handOpenness * 0.9;
+            // 无手势，慢慢闭合
+            handOpenness *= 0.9;
         }
     }
 
@@ -303,78 +307,84 @@
 
     // ================= 动画循环 =================
     let smoothedOpenness = 0;
-
+    
     function animate() {
         requestAnimationFrame(animate);
 
         const time = Date.now() * 0.001;
-        particleMaterial.uniforms.time.value = time; // 驱动闪烁
+        particleMaterial.uniforms.time.value = time;
+        
+        smoothedOpenness += (handOpenness - smoothedOpenness) * 0.1;
 
-        smoothedOpenness += (handOpenness - smoothedOpenness) * 0.08;
-
+        // --- 1. 圣诞树粒子动画 ---
         const positions = particleSystem.geometry.attributes.position.array;
+        
+        // 如果手张开，粒子炸开
+        const explosionFactor = smoothedOpenness * 4.0; 
 
-        // 3. 逻辑修正：默认状态下（smoothedOpenness 接近 0），强制渲染为树
-        if (smoothedOpenness < 0.3) {
-            // === 模式：圣诞树 ===
-            galleryGroup.visible = false;
-            document.getElementById('title-overlay').style.opacity = 1;
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const i3 = i * 3;
+            // 原始位置
+            const ox = treeOriginalPos[i3];
+            const oy = treeOriginalPos[i3+1];
+            const oz = treeOriginalPos[i3+2];
 
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                const i3 = i * 3;
-                // 强插值回到树的位置
-                positions[i3] += (treePositions[i3] - positions[i3]) * 0.1;
-                positions[i3+1] += (treePositions[i3+1] - positions[i3+1]) * 0.1;
-                positions[i3+2] += (treePositions[i3+2] - positions[i3+2]) * 0.1;
-            }
-            particleSystem.rotation.y += 0.005; // 自转
+            // 目标位置：原始位置 + 向外扩散向量
+            // 简单的向外扩散：x*factor, z*factor
+            const tx = ox + ox * explosionFactor;
+            const ty = oy + oy * explosionFactor * 0.5; // 高度扩散少一点
+            const tz = oz + oz * explosionFactor;
 
-        } else {
-            // === 模式：画廊 ===
-            galleryGroup.visible = true;
-            document.getElementById('title-overlay').style.opacity = 0;
-
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                const i3 = i * 3;
-                // 爆炸扩散
-                const tx = treePositions[i3] * 8.0; 
-                const ty = treePositions[i3+1] * 8.0;
-                const tz = treePositions[i3+2] * 8.0;
-                
-                positions[i3] += (tx - positions[i3]) * 0.05;
-                positions[i3+1] += (ty - positions[i3+1]) * 0.05;
-                positions[i3+2] += (tz - positions[i3+2]) * 0.05;
-            }
-            
-            // 画廊交互
-            const targetRotY = (handX - 0.5) * 4; 
-            galleryGroup.rotation.y += (targetRotY - galleryGroup.rotation.y) * 0.05;
-
-            // 捏合放大
-            let closestMesh = null;
-            let maxZ = -999;
-            photoMeshes.forEach(mesh => {
-                const worldPos = new THREE.Vector3();
-                mesh.getWorldPosition(worldPos);
-                mesh.material.opacity = 0.8;
-                mesh.scale.set(1, 1, 1);
-                if (worldPos.z > maxZ) {
-                    maxZ = worldPos.z;
-                    closestMesh = mesh;
-                }
-            });
-            if (isPinching && closestMesh) {
-                closestMesh.scale.set(1.5, 1.5, 1.5);
-                closestMesh.material.opacity = 1;
-            }
+            // 插值更新
+            positions[i3] += (tx - positions[i3]) * 0.1;
+            positions[i3+1] += (ty - positions[i3+1]) * 0.1;
+            positions[i3+2] += (tz - positions[i3+2]) * 0.1;
         }
-
         particleSystem.geometry.attributes.position.needsUpdate = true;
 
-        // 飘雪更新
+        // --- 2. 照片挂件动画 ---
+        photoMeshes.forEach(mesh => {
+            // 目标状态插值
+            // 0 (握拳) -> 使用 treePos 和 treeScale
+            // 1 (张开) -> 使用 galleryPos 和 galleryScale
+            
+            const targetPos = new THREE.Vector3().lerpVectors(mesh.userData.treePos, mesh.userData.galleryPos, smoothedOpenness);
+            const targetScale = new THREE.Vector3().lerpVectors(mesh.userData.treeScale, mesh.userData.galleryScale, smoothedOpenness);
+            
+            mesh.position.lerp(targetPos, 0.1);
+            mesh.scale.lerp(targetScale, 0.1);
+
+            // 捏合高亮效果 (只在张开状态生效)
+            if (smoothedOpenness > 0.5) {
+                 // 让照片始终面向摄像机 (广告牌效果) 方便查看
+                 mesh.lookAt(camera.position);
+                 
+                 // 简单的选中逻辑：如果捏合，且照片在中间
+                 // 这里简化为：所有照片捏合时稍微放大一点以示反馈
+                 if (isPinching) {
+                     mesh.scale.multiplyScalar(1.02);
+                 }
+            } else {
+                // 闭合状态：照片面向外部，像贴在树上
+                mesh.lookAt(mesh.position.x * 2, mesh.position.y, mesh.position.z * 2);
+            }
+        });
+
+        // --- 3. 整体旋转控制 ---
+        if (smoothedOpenness > 0.5) {
+            // 张开手：通过手势位置控制旋转
+            // 手在中间(0.5)不转，往左往右转
+            const rotateSpeed = (handX - 0.5) * 0.05;
+            christmasGroup.rotation.y += rotateSpeed;
+        } else {
+            // 握拳/默认：自动旋转展示礼物
+            christmasGroup.rotation.y += 0.005;
+        }
+
+        // --- 4. 飘雪 ---
         const snowP = snowSystem.geometry.attributes.position.array;
         for(let i=1; i<snowCount*3; i+=3) {
-            snowP[i] -= 0.03; 
+            snowP[i] -= 0.02; 
             if(snowP[i] < -10) snowP[i] = 10; 
         }
         snowSystem.geometry.attributes.position.needsUpdate = true;
